@@ -10,7 +10,7 @@ st.caption("Upload or capture an image to get breed suggestions. Works with the 
 # -------------------------
 # Sidebar settings
 # -------------------------
-api_url = st.sidebar.text_input("API URL", value="https://animalbreeddetectorbackend.onrender.com")
+api_url = st.sidebar.text_input("API URL", value="https://animalbreeddetectorbackend-2.onrender.com")
 threshold = st.sidebar.slider("Suggestion threshold", 0.0, 1.0, 0.6, 0.05)
 topk = st.sidebar.selectbox("Top-K", [1, 2, 3, 4, 5], index=2)
 
