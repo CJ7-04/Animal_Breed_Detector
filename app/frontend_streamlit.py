@@ -3,7 +3,7 @@ import requests
 from PIL import Image
 import io
 
-st.set_page_config(page_title="BPA Breed ID (Prototype)", layout="centered",color="green")
+st.set_page_config(page_title="BPA Breed ID (Prototype)", layout="centered")
 st.title("BPA Breed Identification - FLW Assistant")
 st.caption("Upload or capture an image to get breed suggestions.")
 
