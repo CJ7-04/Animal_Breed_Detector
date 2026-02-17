@@ -1,7 +1,5 @@
 import streamlit as st
 import requests
-from PIL import Image
-import io
 
 st.set_page_config(
     page_title="Animal Breed Identifier",
@@ -83,6 +81,7 @@ with tab1:
                         suggestion = resp.get("suggestion")
                         top_predictions = resp.get("topk", [])
                         breed_info = resp.get("breed_info")
+                        confidence_msg = resp.get("confidence_message")
 
                         # -------------------------
                         # RESULT DISPLAY
@@ -91,6 +90,10 @@ with tab1:
                             st.success(f"✅ Suggested Breed: **{suggestion}**")
                         else:
                             st.warning("No confident suggestion")
+
+                        # 🌾 Confidence guidance
+                        if confidence_msg:
+                            st.info(confidence_msg)
 
                         # -------------------------
                         # CONFIDENCE LIST
@@ -106,20 +109,12 @@ with tab1:
                         if breed_info:
                             st.markdown("### 🐄 Breed Information")
 
-                            st.markdown(
-                                f"""
-                                **Name:** {breed_info.get('name','')}
+                            display_name = breed_info.get("display_name") or breed_info.get("name")
 
-                                **Region:** {breed_info.get('region','')}
-
-                                **Milk Yield:** {breed_info.get('milk_yield','')}
-
-                                **Uses:** {breed_info.get('uses','')}
-                                """
-                            )
-
-                            if breed_info.get("name_local"):
-                                st.markdown(f"**Local Name:** {breed_info['name_local']}")
+                            st.markdown(f"**Name:** {display_name}")
+                            st.markdown(f"**Region:** {breed_info.get('region','')}")
+                            st.markdown(f"**Milk Yield:** {breed_info.get('milk_yield','')}")
+                            st.markdown(f"**Uses:** {breed_info.get('uses','')}")
 
                             if breed_info.get("farmer_tip"):
                                 st.info(f"🌾 Farmer Tip: {breed_info['farmer_tip']}")
@@ -154,5 +149,4 @@ with tab2:
 
     except Exception as e:
         st.error(f"Failed: {e}")
-
 
