@@ -52,7 +52,7 @@ with tab1:
                         st.markdown(
                             f"""
                             <div style="
-                                padding: 15px;
+                                padding: 1px;
                                 border-radius: 10px;
                                 background-color: #d4edda;
                                 color: #155724;
