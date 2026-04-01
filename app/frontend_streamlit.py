@@ -13,9 +13,11 @@ st.caption("Upload or capture an image to identify cattle breed")
 # -------------------------
 # Load breed database (🔥 FIX)
 # -------------------------
-with open("breed_db.json", "r", encoding="utf-8") as f:
-    raw_data = json.load(f)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+file_path = os.path.join(BASE_DIR, "breed_db.json")
 
+with open(file_path, "r", encoding="utf-8") as f:
+    raw_data = json.load(f)
 # Convert list → dictionary
 BREED_DB = {b["name"]: b for b in raw_data["breeds"]}
 
