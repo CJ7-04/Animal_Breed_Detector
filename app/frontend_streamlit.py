@@ -1,103 +1,129 @@
 import streamlit as st
 import requests
-from PIL import Image
-import io
-
-st.set_page_config(page_title="BPA Breed ID (Prototype)", layout="centered")
-st.title("AI Driven Breed Identification - FLW Assistant")
-st.caption("Upload or capture an image to get breed suggestions.")
+import json
 
 # -------------------------
-# Sidebar settings
+# Page config
 # -------------------------
-api_url = st.sidebar.text_input("API URL", value="https://animalbreeddetectorbackend-2.onrender.com")
-threshold = st.sidebar.slider("Suggestion threshold", 0.0, 1.0, 0.6, 0.05)
-topk = st.sidebar.selectbox("Top-K", [1, 2, 3, 4, 5], index=2)
+st.set_page_config(page_title="Breed AI", layout="centered")
 
-# -------------------------
-# Tabs
-# -------------------------
-tab1, tab2 = st.tabs(["Predict", "Breeds"])
+st.title("🐄 AI Breed Identification")
+st.caption("Upload or capture an image to identify cattle breed")
 
 # -------------------------
-# Predict tab
+# Load breed database (🔥 FIX)
 # -------------------------
-with tab1:
-    img_file = st.file_uploader("Upload image", type=["jpg","jpeg","png"])
-    cam = st.camera_input("Or capture from camera", disabled=False)
+with open("breed_db.json", "r", encoding="utf-8") as f:
+    raw_data = json.load(f)
 
-    file_bytes = None
-    if cam is not None:
-        file_bytes = cam.getvalue()
-    elif img_file is not None:
-        file_bytes = img_file.read()
+# Convert list → dictionary
+BREED_DB = {b["name"]: b for b in raw_data["breeds"]}
 
-    if file_bytes:
-        col1, col2 = st.columns(2)
-        with col1:
-            st.image(file_bytes, caption="Input", width="stretch")
+# -------------------------
+# Sidebar
+# -------------------------
+api_url = st.sidebar.text_input(
+    "API URL",
+    value="https://animalbreeddetectorbackend-2.onrender.com"
+)
+topk = st.sidebar.slider("Top Predictions", 1, 5, 3)
 
+# -------------------------
+# Upload section
+# -------------------------
+img_file = st.file_uploader("📤 Upload Image", type=["jpg","jpeg","png"])
+cam = st.camera_input("📷 Capture Image")
 
-        with col2:
+file_bytes = None
+if cam:
+    file_bytes = cam.getvalue()
+elif img_file:
+    file_bytes = img_file.read()
+
+# -------------------------
+# Prediction
+# -------------------------
+if file_bytes:
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.image(file_bytes, caption="Input Image", use_container_width=True)
+
+    with col2:
+        with st.spinner("🔍 Analyzing..."):
             try:
                 files = {"file": ("image.jpg", file_bytes, "image/jpeg")}
-                data = {"threshold": str(threshold), "topk": str(topk)}
-                r = requests.post(f"{api_url}/predict", files=files, data=data, timeout=30)
+                r = requests.post(f"{api_url}/predict", files=files, timeout=60)
+
                 if r.ok:
                     resp = r.json()
+                    preds = resp.get("top_predictions", [])
 
-                    # --- Styled predicted breed display ---
-                    predicted = resp.get("predicted_class")
-                    if predicted:
+                    if preds:
+                        best = preds[0]
+                        breed_name = best["breed"]
+                        confidence = best["confidence"]
+
+                        # 🏆 Prediction Card
                         st.markdown(
                             f"""
                             <div style="
                                 padding: 15px;
-                                border-radius: 10px;
+                                border-radius: 12px;
                                 background-color: #d4edda;
                                 color: #155724;
+                                font-size: 22px;
                                 font-weight: bold;
-                                font-size: 20px;
                                 text-align: center;
-                                border: 1px solid #c3e6cb;
                             ">
-                            Predicted Breed: {predicted}
+                            🏆 {breed_name} ({confidence*100:.1f}%)
                             </div>
                             """,
                             unsafe_allow_html=True
                         )
+
+                        # 📋 Breed Details
+                        info = BREED_DB.get(breed_name)
+
+                        if info:
+                            st.markdown("### 📋 Breed Details")
+
+                            st.markdown(f"**🐄 Name:** {info.get('name')}")
+                            st.markdown(f"**🧬 Species:** {info.get('species')}")
+                            st.markdown(f"**🧬 Local Name:** {info.get('local_name')}")
+                            st.markdown(f"**🌍 Region:** {info.get('region')}")
+                            st.markdown(f"**🌡 Climate:** {info.get('climate')}")
+                            st.markdown(f"**🥛 Milk Yield:** {info.get('milk_yield')}")
+
+                            # Aliases
+                            aliases = ", ".join(info.get("aliases", []))
+                            st.markdown(f"**🔁 Aliases:** {aliases}")
+
+                            st.markdown("**🔍 Identification:**")
+                            st.info(info.get("identification"))
+
+                            st.markdown("**💡 Farmer Tip:**")
+                            st.success(info.get("farmer_tip"))
+
+                        else:
+                            st.warning("Breed info not available")
+
+                        # 📊 Top Predictions
+                        st.markdown("### 📊 Other Possible Breeds")
+                        for i, p in enumerate(preds[:topk]):
+                            st.write(f"{i+1}. **{p['breed']}** → {p['confidence']*100:.1f}%")
+
                     else:
-                        st.warning("No confident prediction returned by API.")
+                        st.warning("No prediction returned")
 
-                    # Optional suggestion message
-                    if resp.get("suggestion"):
-                        st.success(f"Suggested breed: **{resp['suggestion']}** (≥ threshold)")
-                        if st.button("Copy suggestion for BPA"):
-                            st.session_state["selected_breed"] = resp["suggestion"]
                 else:
-                    st.error(f"API error: {r.text}")
+                    st.error(f"API Error: {r.text}")
+
             except Exception as e:
-                st.error(f"Request failed: {e}")
+                st.error(f"Error: {e}")
 
 # -------------------------
-# Breeds tab
+# Footer
 # -------------------------
-with tab2:
-    try:
-        r = requests.get(f"{api_url}/breeds", timeout=10)
-        if r.ok:
-            breeds = r.json()
-            if breeds:
-                st.markdown("### Available Breeds")
-                # Display breeds nicely instead of raw JSON
-                for idx, breed in breeds.items():
-                    st.markdown(f"- **{breed}**")
-            else:
-                st.warning("No breeds found in API.")
-        else:
-            st.error("Failed to fetch breeds list.")
-    except Exception as e:
-        st.error(f"Failed: {e}")
-
-st.info("Tip: Good photos help—front/side profile, head horns, body color patterns, tail switch, udder view when possible.")
-
+st.markdown("---")
+st.info("💡 Tip: Use clear side-view images for best results")
